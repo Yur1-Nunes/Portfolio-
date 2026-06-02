@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Case Study | Sistema de Gestão Processual</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ================= HEADER ================= -->
+  <header class="header">
+    <nav class="nav container">
+      <a href="index.html" class="logo">&lt;Yuri/&gt;</a>
+      <ul class="nav-links">
+        <li><a href="index.html">Início</a></li>
+        <li><a href="index.html#projetos">Projetos</a></li>
+        <li><a href="index.html#contato">Contato</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <!-- ================= HERO ================= -->
+  <section class="cs-hero">
+    <div class="container">
+      <a href="index.html#projetos" class="cs-back">← Voltar aos projetos</a>
+      <span class="destaque-badge">Case Study</span>
+      <h1>Sistema de Gestão Processual</h1>
+      <p class="cs-sub">
+        Aplicativo desktop que centraliza notificações e processos judiciais do PDPJ,
+        com controle de acesso, certificados digitais e envio de e-mail integrado.
+      </p>
+
+      <div class="cs-stack-tags">
+        <span>Electron</span>
+        <span>Node.js + Express</span>
+        <span>PostgreSQL (Railway)</span>
+        <span>API PDPJ / OAuth2</span>
+        <span>RedTrust + Certificados</span>
+        <span>Microsoft Graph</span>
+        <span>Auto-update via GitHub</span>
+      </div>
+
+      <div class="cs-confidencial">
+        <strong>Aviso de confidencialidade.</strong> Estudo de caso para fins de portfólio.
+        Não contém código-fonte proprietário, credenciais, dados de clientes nem o nome da empresa.
+        Os diagramas e descrições são representações genéricas do funcionamento técnico do sistema.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= ARQUITETURA ================= -->
+  <section class="cs-section">
+    <div class="container">
+      <h2 class="with-emoji">Arquitetura do sistema</h2>
+      <p>
+        A aplicação segue uma arquitetura <strong>cliente-servidor com backend embarcado</strong>:
+        o app desktop <strong>Electron</strong>, instalado na máquina do usuário, sobe um backend
+        <strong>Node.js/Express</strong> como processo filho e se comunica com ele localmente via HTTP.
+        Toda a lógica de negócio, validação, autorização e integração com APIs externas fica no
+        backend — o frontend é apenas a camada de apresentação.
+      </p>
+      <p>
+        A persistência é em <strong>PostgreSQL</strong>, com dados sensíveis (credenciais de
+        integração, senhas SMTP) criptografados em repouso usando <strong>AES</strong>.
+      </p>
+      <p>
+        Essa separação garante que segurança e autorização sejam tratadas no servidor, sem confiar
+        no cliente, e centraliza integrações sensíveis — como autenticação <strong>OAuth2 com a API
+        PDPJ</strong> dos tribunais e envio de e-mails via <strong>Microsoft Graph</strong>.
+      </p>
+      <p>
+        O acesso às telas de processos depende da presença de certificados
+        <strong>e-CNPJ/e-CPF</strong>: o sistema os <strong>detecta</strong> no Windows
+        Certificate Store (disponibilizados pelo <strong>RedTrust</strong>) via PowerShell e
+        libera as funcionalidades correspondentes quando estão presentes.
+      </p>
+
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+flowchart TB
+    subgraph Cliente["💻 Cliente (Electron)"]
+        UI["Interface do usuário"]
+        UPD["Auto-updater"]
+    end
+    subgraph Servidor["🔒 API (Node.js + Express)"]
+        AUTH["Autenticação + 2FA"]
+        RBAC["Autorização (RBAC)"]
+        BIZ["Regras de negócio"]
+        AUD["Auditoria"]
+        CRYPTO["Criptografia (AES)"]
+    end
+    DB[("PostgreSQL")]
+    PJE["PDPJ / Tribunais"]
+    GRAPH["Microsoft Graph<br/>envio de e-mail"]
+    CERT["Windows Cert Store<br/>(RedTrust)"]
+    GH["GitHub Releases"]
+
+    UI -->|HTTP local| AUTH
+    AUTH --> RBAC --> BIZ
+    BIZ --> AUD
+    BIZ --> CRYPTO
+    BIZ --> DB
+    BIZ -->|OAuth2 · HTTPS| PJE
+    BIZ -->|OAuth2 · HTTPS| GRAPH
+    BIZ -->|detecta via PowerShell| CERT
+    UPD -->|verifica versão| GH
+        </div>
+      </div>
+
+      <h3 class="arch-subtitle">Em palavras simples</h3>
+
+      <div class="arch-zone">
+        <h3>Máquina do usuário (jurídico)</h3>
+        <div class="arch-grid">
+          <div class="arch-card">
+            <h4>Aplicativo Desktop (interno) <span>Electron</span></h4>
+            <p>Programa instalado no Windows. Por dentro ele sobe um servidor local e abre a tela como se fosse um site (localhost:3000).</p>
+          </div>
+          <div class="arch-card">
+            <h4>Servidor interno <span>Node.js + Express</span></h4>
+            <p>É o "cérebro" do app: trata login, regras de acesso e conversa com os serviços externos. Roda dentro do próprio computador.</p>
+          </div>
+          <div class="arch-card">
+            <h4>RedTrust + Certificados do Windows <span>Local</span></h4>
+            <p>Os certificados e-CNPJ/e-CPF só aparecem no Windows quando o RedTrust está conectado. O app verifica isso e libera a aba de Processos.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="arch-connector">o servidor interno conversa com cada serviço da nuvem por conexão segura criptografada</div>
+
+      <div class="arch-zone">
+        <h3>Serviços na nuvem (internet)</h3>
+        <div class="arch-grid">
+          <div class="arch-card">
+            <h4>Banco de dados <span>PostgreSQL · Railway</span></h4>
+            <p>Guarda usuários, permissões, CNPJs cadastrados e histórico. Fica na nuvem — por isso funciona de qualquer lugar, dentro ou fora da empresa.</p>
+          </div>
+          <div class="arch-card">
+            <h4>API do PDPJ <span>OAuth2</span></h4>
+            <p>Fonte oficial das comunicações e processos. O app pega um "token" de acesso por CNPJ e consulta as intimações, citações e o inteiro teor.</p>
+          </div>
+          <div class="arch-card">
+            <h4>Microsoft Graph <span>E-mail</span></h4>
+            <p>Envia o e-mail em nome do usuário e salva uma cópia em "Enviados" do Outlook — sem precisar abrir o Outlook.</p>
+          </div>
+          <div class="arch-card">
+            <h4>GitHub Releases <span>Auto-update</span></h4>
+            <p>Quando você publica uma nova versão, o app baixa e atualiza sozinho nas máquinas de todos os usuários.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= FLUXO: SEGURANÇA ================= -->
+  <section class="cs-section">
+    <div class="container">
+      <h2 class="with-emoji">Como a segurança funciona</h2>
+      <p>Do login até o acesso às telas, cada etapa tem uma camada de proteção:</p>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+flowchart LR
+    U["Usuário<br/>usuário + senha"] --> B["bcrypt<br/>confere a senha"]
+    B --> F["2FA TOTP<br/>código de 30s"]
+    F --> S["Sessão<br/>Express · cookie seguro"]
+    S --> R["Autorização RBAC<br/>admin / user"]
+    R --> ACC["Acesso liberado<br/>só o que o papel permite"]
+        </div>
+      </div>
+      <p class="flow-note">Dados sensíveis (como o Client Secret de cada CNPJ) ficam <strong>criptografados com AES</strong> no banco.</p>
+    </div>
+  </section>
+
+  <!-- ================= FLUXO: INTEGRAÇÃO PDPJ + BANCO ================= -->
+  <section class="cs-section">
+    <div class="container">
+      <h2 class="with-emoji">Integração com o PDPJ e o banco de dados</h2>
+      <p>Como o sistema busca as comunicações oficiais e guarda o histórico:</p>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+flowchart LR
+    DB[("PostgreSQL · Railway<br/>credenciais AES por CNPJ")] --> T["Token OAuth2<br/>por CNPJ"]
+    T --> P["API do PDPJ<br/>comunicações"]
+    P --> UI["Tela do app<br/>exibe processos"]
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= FLUXO: E-MAIL ================= -->
+  <section class="cs-section">
+    <div class="container">
+      <h2 class="with-emoji">Envio de e-mail integrado</h2>
+      <p>
+        O encaminhamento sai direto do app, sem abrir o Outlook. O sistema tenta primeiro o
+        <strong>Microsoft Graph</strong> e, se ele falhar, cai automaticamente para
+        <strong>SMTP</strong> — um fallback que garante resiliência no envio:
+      </p>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+flowchart LR
+    U["Usuário encaminha<br/>a partir do processo"] --> S["Servidor<br/>Node.js + Express"]
+    S --> G["Microsoft Graph · OAuth2<br/>(primário)"]
+    S -.->|fallback| M["SMTP / Nodemailer<br/>(se o Graph falhar)"]
+    G --> E["E-mail enviado<br/>+ Itens Enviados"]
+    M --> E
+    E --> DB[("Registro no banco<br/>tabela sent_emails")]
+        </div>
+      </div>
+      <p class="flow-note">
+        A cópia em "Itens Enviados" funciona de formas diferentes: via Graph é
+        <strong>nativa</strong> (<code>saveToSentItems</code>); no fallback SMTP, é um
+        <strong>BCC</strong> para o próprio remetente. Cada envio é registrado na tabela <code>sent_emails</code>.
+      </p>
+    </div>
+  </section>
+
+  <!-- ================= FLUXO: AUDITORIA ================= -->
+  <section class="cs-section">
+    <div class="container">
+      <h2 class="with-emoji">Auditoria</h2>
+      <p>Toda ação relevante fica rastreável — quem fez, o quê e quando:</p>
+      <div class="mermaid-wrap">
+        <div class="mermaid">
+flowchart LR
+    A["Ação do usuário<br/>login · consulta · alteração"] --> S["Servidor registra<br/>usuário + ação + IP + data/hora"]
+    S --> DB[("PostgreSQL · audit_log<br/>trilha de auditoria")]
+    DB --> R["Consulta filtrada<br/>por usuário / ação / data"]
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= GLOSSÁRIO ================= -->
+  <section class="cs-section">
+    <div class="container">
+      <h2 class="with-emoji">Termos técnicos</h2>
+      <table class="cs-table">
+        <tr><th>Termo</th><th>O que é, em linguagem simples</th></tr>
+        <tr><td><strong>Electron</strong></td><td>Tecnologia que transforma um site (HTML/CSS/JS) em um programa instalável de computador.</td></tr>
+        <tr><td><strong>Node.js + Express</strong></td><td>O servidor que processa as regras do sistema. Roda dentro do app, no próprio computador.</td></tr>
+        <tr><td><strong>PostgreSQL</strong></td><td>O banco de dados onde fica tudo guardado (usuários, CNPJs, histórico).</td></tr>
+        <tr><td><strong>Railway</strong></td><td>Serviço de nuvem que hospeda o banco de dados, acessível pela internet.</td></tr>
+        <tr><td><strong>API</strong></td><td>A "porta de comunicação" que um sistema oferece para outro pedir e receber dados.</td></tr>
+        <tr><td><strong>OAuth2 / Token</strong></td><td>Forma segura de provar identidade: troco minhas credenciais por uma "senha temporária" (token) para usar a API.</td></tr>
+        <tr><td><strong>PDPJ</strong></td><td>Plataforma Digital do Poder Judiciário — a fonte oficial das comunicações e processos.</td></tr>
+        <tr><td><strong>Certificado digital (e-CNPJ)</strong></td><td>Identidade digital da empresa, exigida pela Justiça para acessar os processos.</td></tr>
+        <tr><td><strong>RedTrust</strong></td><td>Software que gerencia os certificados da empresa e os disponibiliza no Windows quando conectado.</td></tr>
+        <tr><td><strong>Microsoft Graph</strong></td><td>API da Microsoft usada para enviar e-mails em nome do usuário (Office 365 / Outlook).</td></tr>
+        <tr><td><strong>bcrypt</strong></td><td>Técnica que embaralha a senha antes de salvar, para que ninguém leia a senha original.</td></tr>
+        <tr><td><strong>2FA</strong></td><td>Segundo fator de autenticação: além da senha, um código que muda a cada 30s (Google Authenticator).</td></tr>
+        <tr><td><strong>AES (criptografia)</strong></td><td>Embaralha dados sensíveis (como o Client Secret) no banco; só o sistema consegue ler de volta.</td></tr>
+        <tr><td><strong>Auto-update</strong></td><td>O app se atualiza sozinho ao detectar uma versão nova publicada no GitHub.</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- ================= CTA ================= -->
+  <section class="cs-section" style="text-align:center;">
+    <div class="container">
+      <h2 class="with-emoji" style="display:inline-block;">Vamos conversar?</h2>
+      <div class="contato-links">
+        <a href="mailto:yuri.icloud21@gmail.com" class="btn btn-primary">Enviar E-mail</a>
+        <a href="index.html#projetos" class="btn btn-outline">Voltar aos Projetos</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= RODAPÉ ================= -->
+  <footer class="footer">
+    <p>© 2026 Yuri Nunes da Silva — Case study para fins de portfólio. Sem código proprietário ou dados confidenciais.</p>
+  </footer>
+
+  <!-- Mermaid: renderiza o diagrama de arquitetura -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+  </script>
+
+</body>
+</html>
